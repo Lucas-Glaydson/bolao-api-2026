@@ -1,0 +1,68 @@
+[2026-06-22T22:08:42.826Z] 🚀 Iniciando migração de dados antigos...
+[2026-06-22T22:08:43.702Z] 📦 Modelos carregados com sucesso
+[2026-06-22T22:08:43.702Z] 📄 Lendo arquivo: palpites_bolao.json
+[2026-06-22T22:08:43.703Z] 📊 Versão do arquivo: 1
+[2026-06-22T22:08:43.703Z] 📅 Última atualização: 2026-06-17T16:44:12.369Z
+[2026-06-22T22:08:43.703Z] 👥 Verificando 16 usuários dos palpites...
+[2026-06-22T22:08:43.954Z]   ✓ Usuário encontrado: Felipe
+[2026-06-22T22:08:44.129Z]   ✓ Usuário encontrado: Ingrid
+[2026-06-22T22:08:44.197Z]   ✓ Usuário encontrado: Mauro
+[2026-06-22T22:08:44.283Z]   ✓ Usuário encontrado: Caetano
+[2026-06-22T22:08:44.346Z]   ✓ Usuário encontrado: Emmanuel
+[2026-06-22T22:08:44.401Z]   ✓ Usuário encontrado: Rafael
+[2026-06-22T22:08:44.456Z]   ✓ Usuário encontrado: Evelin
+[2026-06-22T22:08:44.512Z]   ✓ Usuário encontrado: Alefe
+[2026-06-22T22:08:44.568Z]   ✓ Usuário encontrado: Bruno
+[2026-06-22T22:08:44.625Z]   ✓ Usuário encontrado: AdilsonJR
+[2026-06-22T22:08:44.681Z]   ✓ Usuário encontrado: Miguel
+[2026-06-22T22:08:44.736Z]   ✓ Usuário encontrado: Anderson
+[2026-06-22T22:08:44.791Z]   ✓ Usuário encontrado: Lucas
+[2026-06-22T22:08:44.847Z]   ✓ Usuário encontrado: Zaine
+[2026-06-22T22:08:44.903Z]   ✓ Usuário encontrado: Valdemir
+[2026-06-22T22:08:44.959Z]   ✓ Usuário encontrado: Paulo
+[2026-06-22T22:08:44.959Z] ✅ Usuários mapeados: 16
+[2026-06-22T22:08:44.959Z] 🏆 Total de jogos no arquivo: 87
+[2026-06-22T22:08:45.016Z] 📋 Partidas já cadastradas no sistema: 78
+[2026-06-22T22:08:45.016Z] ⚠️  ATENÇÃO: Faltam 9 partidas no sistema!
+[2026-06-22T22:08:45.016Z] ⚠️  Execute o seed de partidas antes de migrar palpites.
+[2026-06-22T22:08:45.017Z] ⚠️  Continuando com as partidas disponíveis...
+[2026-06-22T22:08:45.017Z] 🗺️  Criando mapeamento de IDs...
+[2026-06-22T22:08:45.134Z]   1 → México vs Canadá
+[2026-06-22T22:08:45.134Z]   2 → País A3 vs País A4
+[2026-06-22T22:08:45.134Z]   3 → USA vs País B2
+[2026-06-22T22:08:45.134Z]   4 → País B3 vs País B4
+[2026-06-22T22:08:45.134Z]   5 → Brasil vs Argentina
+[2026-06-22T22:08:45.134Z]   ... e mais 73 partidas
+[2026-06-22T22:08:45.134Z] ✅ Mapeamento criado para 78 partidas
+[2026-06-22T22:08:45.134Z] 🎯 Iniciando migração de palpites...
+[2026-06-22T22:08:57.127Z]   📈 Progresso: 100/100
+[2026-06-22T22:09:09.302Z]   📈 Progresso: 200/200
+[2026-06-22T22:09:21.340Z]   📈 Progresso: 300/300
+[2026-06-22T22:09:33.469Z]   📈 Progresso: 400/400
+[2026-06-22T22:09:45.430Z]   📈 Progresso: 500/500
+[2026-06-22T22:09:57.535Z]   📈 Progresso: 600/600
+[2026-06-22T22:10:09.477Z]   📈 Progresso: 700/700
+[2026-06-22T22:10:21.463Z]   📈 Progresso: 800/800
+[2026-06-22T22:10:33.277Z]   📈 Progresso: 900/900
+[2026-06-22T22:10:45.155Z]   📈 Progresso: 1000/1000
+[2026-06-22T22:10:57.033Z]   📈 Progresso: 1100/1100
+[2026-06-22T22:11:08.906Z]   📈 Progresso: 1200/1200
+[2026-06-22T22:11:13.279Z] ⚠️    ⚠️  Partida 79 não encontrada no mapeamento
+[2026-06-22T22:11:13.280Z] ⚠️    ⚠️  Partida 80 não encontrada no mapeamento
+[2026-06-22T22:11:13.280Z] ⚠️    ⚠️  Partida 81 não encontrada no mapeamento
+[2026-06-22T22:11:13.280Z] ⚠️    ⚠️  Partida 82 não encontrada no mapeamento
+[2026-06-22T22:11:13.280Z] ⚠️    ⚠️  Partida 83 não encontrada no mapeamento
+[2026-06-22T22:11:13.280Z] ⚠️    ⚠️  Partida 84 não encontrada no mapeamento
+[2026-06-22T22:11:13.280Z] ⚠️    ⚠️  Partida 85 não encontrada no mapeamento
+[2026-06-22T22:11:13.280Z] ⚠️    ⚠️  Partida 86 não encontrada no mapeamento
+[2026-06-22T22:11:13.280Z] ⚠️    ⚠️  Partida 87 não encontrada no mapeamento
+[2026-06-22T22:11:13.280Z] 
+============================================================
+[2026-06-22T22:11:13.280Z] 📊 RESUMO DA MIGRAÇÃO
+[2026-06-22T22:11:13.280Z] ============================================================
+[2026-06-22T22:11:13.280Z] ✅ Total de palpites processados: 1237
+[2026-06-22T22:11:13.280Z] ✅ Migrados com sucesso: 1237
+[2026-06-22T22:11:13.280Z] ⚠️  Já existentes (ignorados): 0
+[2026-06-22T22:11:13.281Z] ❌ Erros: 135
+[2026-06-22T22:11:13.281Z] Data original: 2026-06-17T16:44:12.369Z
+[2026-06-22T22:11:13.281Z] ============================================================
