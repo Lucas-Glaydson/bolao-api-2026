@@ -57,6 +57,18 @@ export class SyncMatchesUseCase implements OnApplicationBootstrap {
       let synced = 0;
       let errors = 0;
 
+      // ── Build lookup maps from existing DB matches ──────────────────────
+      // This lets us find the correct externalId regardless of which API
+      // originally created the match (football-data.org numeric vs wc26-*).
+      const allExisting = await this.matchRepository.findAll();
+      const byExternalId = new Map(allExisting.map((m) => [m.externalId, m]));
+      const byTeamKey = new Map(
+        allExisting.map((m) => [
+          `${this._normalizeTeam(m.homeTeam)}__${this._normalizeTeam(m.awayTeam)}`,
+          m,
+        ]),
+      );
+
       for (const match of matches) {
         try {
           if (!match.externalId) {
@@ -64,10 +76,29 @@ export class SyncMatchesUseCase implements OnApplicationBootstrap {
             errors++;
             continue;
           }
-          await this.matchRepository.upsertByExternalId(
-            match.externalId,
-            match,
-          );
+
+          // ── Smart ID resolution ─────────────────────────────────────────
+          // Priority 1: exact externalId match (normal path)
+          // Priority 2: same teams (forward) → reuse existing doc's externalId
+          // Priority 3: same teams reversed (home/away swapped between APIs)
+          let targetExtId = match.externalId;
+          if (!byExternalId.has(match.externalId) && match.homeTeam && match.awayTeam) {
+            const fwdKey = `${this._normalizeTeam(match.homeTeam)}__${this._normalizeTeam(match.awayTeam)}`;
+            const revKey = `${this._normalizeTeam(match.awayTeam)}__${this._normalizeTeam(match.homeTeam)}`;
+
+            const existing = byTeamKey.get(fwdKey) ?? byTeamKey.get(revKey);
+            if (existing) {
+              targetExtId = existing.externalId;
+              this.logger.debug(
+                `Smart match: ${match.homeTeam} vs ${match.awayTeam} → reusing externalId ${targetExtId}`,
+              );
+            }
+          }
+
+          await this.matchRepository.upsertByExternalId(targetExtId, {
+            ...match,
+            externalId: targetExtId,
+          });
           synced++;
         } catch (error) {
           this.logger.error(
@@ -224,6 +255,38 @@ export class SyncMatchesUseCase implements OnApplicationBootstrap {
       this.logger.warn(`worldcup26.ir fallback failed: ${err.message}`);
       return 0;
     }
+  }
+
+  /** Canonical alias map: resolves API-specific team name differences. */
+  private static readonly TEAM_ALIASES: Record<string, string> = {
+    czechia: 'czechrepublic',
+    czechrepublic: 'czechrepublic',
+    cotedivoire: 'ivorycoast',
+    ivorycoast: 'ivorycoast',
+    capeverdeislands: 'capeverde',
+    capeverde: 'capeverde',
+    republicofkorea: 'southkorea',
+    southkorea: 'southkorea',
+    korea: 'southkorea',
+    democraticrepublicofthecongo: 'drcongo',
+    drcongo: 'drcongo',
+    congodrc: 'drcongo',
+    congodr: 'drcongo',
+    bosniaherzegovina: 'bosniaandherzegovina',
+    bosniaandherzegovina: 'bosniaandherzegovina',
+    unitedstates: 'usa',
+    usa: 'usa',
+  };
+
+  /** Normalise a team name for cross-API fuzzy matching. */
+  private _normalizeTeam(name = ''): string {
+    const n = name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '')
+      .trim();
+    return SyncMatchesUseCase.TEAM_ALIASES[n] ?? n;
   }
 }
 

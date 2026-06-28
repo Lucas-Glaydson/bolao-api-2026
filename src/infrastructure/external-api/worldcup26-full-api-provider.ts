@@ -68,6 +68,7 @@ const TEAM_NAME_ALIASES: Record<string, string> = {
   'costadoelfim': 'cotedivoire',
   'democraticrepublicofthecongo': 'drcongo',
   'congodr': 'drcongo',
+  'congodrc': 'drcongo',
   'saudiarabia': 'saudiarabia',
   'arabiesaoudite': 'saudiarabia',
   'newzealand': 'newzealand',
