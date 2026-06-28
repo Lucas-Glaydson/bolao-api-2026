@@ -39,12 +39,12 @@ async function bootstrap() {
 
     // Create score rules
     const scoreRules = [
-      { stage: MatchStage.GROUP_STAGE, basePoints: 1, exactScoreBonus: 2 },
-      { stage: MatchStage.ROUND_OF_32, basePoints: 1, exactScoreBonus: 2 },
-      { stage: MatchStage.ROUND_OF_16, basePoints: 1, exactScoreBonus: 2 },
-      { stage: MatchStage.QUARTER_FINALS, basePoints: 1, exactScoreBonus: 2 },
-      { stage: MatchStage.SEMI_FINALS, basePoints: 2, exactScoreBonus: 2 },
-      { stage: MatchStage.FINAL, basePoints: 2, exactScoreBonus: 2 },
+      { stage: MatchStage.GROUP_STAGE, basePoints: 1, exactScoreBonus: 1 },
+      { stage: MatchStage.ROUND_OF_32, basePoints: 1, exactScoreBonus: 1 },
+      { stage: MatchStage.ROUND_OF_16, basePoints: 1, exactScoreBonus: 1 },
+      { stage: MatchStage.QUARTER_FINALS, basePoints: 1, exactScoreBonus: 1 },
+      { stage: MatchStage.SEMI_FINALS, basePoints: 2, exactScoreBonus: 1 },
+      { stage: MatchStage.FINAL, basePoints: 2, exactScoreBonus: 1 },
     ];
 
     for (const rule of scoreRules) {

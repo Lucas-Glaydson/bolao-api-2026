@@ -107,18 +107,25 @@ export class CalculatePointsUseCase {
     tiebreakWinner: 'home' | 'away' | null,
     matchWinner: MatchWinner | null,
   ): { points: number; exactScore: boolean; outcomeHit: boolean } {
-    // Exact score
+    // ── Exact score ───────────────────────────────────────────────────────────
     if (predictedHome === actualHome && predictedAway === actualAway) {
-      // For draws with exact score, also require correct tiebreakWinner if match has a winner
-      const isDraw = predictedHome === predictedAway;
-      if (isDraw && matchWinner && matchWinner !== MatchWinner.DRAW) {
-        const tiebreakCorrect = tiebreakWinner === matchWinner;
+      const isDrawScore = actualHome === actualAway;
+      // Match went to penalties: score is draw but match.winner is HOME or AWAY
+      const hasPenaltyWinner =
+        isDrawScore &&
+        matchWinner !== null &&
+        matchWinner !== MatchWinner.DRAW;
+
+      // Exact draw + correct penalty winner → +1 tiebreak bonus (3 pts with base=1, bonus=1)
+      if (hasPenaltyWinner && tiebreakWinner === matchWinner) {
         return {
-          points: tiebreakCorrect ? basePoints + exactBonus : 0,
-          exactScore: tiebreakCorrect,
-          outcomeHit: tiebreakCorrect,
+          points: basePoints + exactBonus + 1,
+          exactScore: true,
+          outcomeHit: true,
         };
       }
+
+      // Exact score in every other case (including wrong tiebreak) → 2 pts
       return {
         points: basePoints + exactBonus,
         exactScore: true,
@@ -126,32 +133,15 @@ export class CalculatePointsUseCase {
       };
     }
 
-    // Check outcome
+    // ── Correct outcome (winner or draw) → basePoints (1 pt) ─────────────────
     const predictedWinner = this.determineWinner(predictedHome, predictedAway);
     const actualWinner = this.determineWinner(actualHome, actualAway);
 
     if (predictedWinner === actualWinner) {
-      // For draws, require tiebreakWinner to match match.winner
-      if (predictedWinner === MatchWinner.DRAW && matchWinner && matchWinner !== MatchWinner.DRAW) {
-        const tiebreakCorrect = tiebreakWinner === matchWinner;
-        return {
-          points: tiebreakCorrect ? basePoints : 0,
-          exactScore: false,
-          outcomeHit: tiebreakCorrect,
-        };
-      }
-      return {
-        points: basePoints,
-        exactScore: false,
-        outcomeHit: true,
-      };
+      return { points: basePoints, exactScore: false, outcomeHit: true };
     }
 
-    return {
-      points: 0,
-      exactScore: false,
-      outcomeHit: false,
-    };
+    return { points: 0, exactScore: false, outcomeHit: false };
   }
 
   private determineWinner(
