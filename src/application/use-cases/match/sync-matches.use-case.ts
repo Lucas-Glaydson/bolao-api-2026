@@ -40,27 +40,17 @@ export class SyncMatchesUseCase implements OnApplicationBootstrap {
   }
 
   /**
-   * Daily sync at 06:00 UTC — refreshes all fixtures once per day.
-   * Costs 1 API request/day regardless of how many matches there are.
+   * Sync every 5 minutes to keep scores and statuses up to date.
+   * worldcup26.ir + ESPN have no request quota so frequent syncing is fine.
    */
-  @Cron('0 6 * * *')
-  async handleDailyCron(): Promise<void> {
-    this.logger.log('Daily cron: syncing all fixtures from external API');
+  @Cron('*/5 * * * *')
+  async handleCron(): Promise<void> {
+    this.logger.log('Cron: syncing all fixtures from worldcup26.ir + ESPN');
     await this.execute();
   }
 
   async execute(): Promise<{ synced: number; errors: number }> {
     this.logger.log('Starting match synchronization');
-
-    const apiKey = this.footballApiProvider['apiKey'] as string | undefined;
-    const baseUrl = this.footballApiProvider['baseUrl'] as string | undefined;
-    if (!apiKey || !baseUrl) {
-      this.logger.error(
-        'External API not configured! Set EXTERNAL_FOOTBALL_API_BASE_URL and ' +
-        'EXTERNAL_FOOTBALL_API_KEY in your .env file, then restart the server.',
-      );
-      return { synced: 0, errors: 0 };
-    }
 
     try {
       const matches = await this.footballApiProvider.fetchMatches();
@@ -92,28 +82,12 @@ export class SyncMatchesUseCase implements OnApplicationBootstrap {
         `Match synchronization completed: ${synced} synced, ${errors} errors`,
       );
 
-      // Remove seeded placeholder matches now that real API data is in the DB.
-      // Prevents double-counting in standings (wc26-* duplicates numeric-ID docs).
-      if (synced > 0) {
-        try {
-          const deleted = await this.matchRepository.deleteSeedPlaceholders();
-          if (deleted > 0) {
-            this.logger.log(
-              `🧹 Removed ${deleted} seeded placeholder matches (wc26-* / generated-*) — API data is now the source of truth`,
-            );
-          }
-        } catch (error) {
-          this.logger.error('Error removing seed placeholders', error.message);
-        }
-      }
-
-      // After syncing matches, update knockout brackets only if the API
+      // After syncing matches, update knockout brackets only if worldcup26.ir
       // does NOT yet provide R32 matches (early in the tournament).
-      // Once the API provides them, its data is authoritative — generating
-      // fake records would create duplicates with wrong dates.
       try {
         const r32Matches = await this.matchRepository.findByStage(MatchStage.ROUND_OF_32);
-        const apiR32 = r32Matches.filter((m) => /^\d+$/.test(m.externalId));
+        // wc26- prefix IDs are the canonical IDs for worldcup26.ir
+        const apiR32 = r32Matches.filter((m) => /^(wc26-|\d+)/.test(m.externalId));
 
         if (apiR32.length === 0) {
           this.logger.log('🏆 API has no R32 data yet — generating bracket from group standings...');
@@ -156,8 +130,6 @@ export class SyncMatchesUseCase implements OnApplicationBootstrap {
    * Uses individual match requests (not the bulk endpoint) to save quota.
    */
   async syncUnknownMatches(): Promise<number> {
-    const apiKey = this.footballApiProvider['apiKey'] as string | undefined;
-
     const all = await this.matchRepository.findAll();
     const unknowns = all.filter(
       (m) => m.homeTeam === 'Unknown' || m.awayTeam === 'Unknown',
@@ -167,34 +139,32 @@ export class SyncMatchesUseCase implements OnApplicationBootstrap {
 
     let updated = 0;
 
-    // Try football-data.org first (if configured)
-    if (apiKey) {
-      await Promise.all(
-        unknowns.map(async (match) => {
-          try {
-            const fresh = await this.footballApiProvider.fetchMatchById(match.externalId);
-            if (
-              fresh &&
-              fresh.homeTeam &&
-              fresh.awayTeam &&
-              fresh.homeTeam !== 'Unknown' &&
-              fresh.awayTeam !== 'Unknown'
-            ) {
-              await this.matchRepository.upsertByExternalId(match.externalId, fresh);
-              updated++;
-            }
-          } catch {
-            // ignore individual fetch errors
+    // Resolve via worldcup26.ir full provider first
+    await Promise.all(
+      unknowns.map(async (match) => {
+        try {
+          const fresh = await this.footballApiProvider.fetchMatchById(match.externalId);
+          if (
+            fresh &&
+            fresh.homeTeam &&
+            fresh.awayTeam &&
+            fresh.homeTeam !== 'Unknown' &&
+            fresh.awayTeam !== 'Unknown'
+          ) {
+            await this.matchRepository.upsertByExternalId(match.externalId, fresh);
+            updated++;
           }
-        }),
-      );
+        } catch {
+          // ignore individual fetch errors
+        }
+      }),
+    );
 
-      if (updated > 0) {
-        this.logger.log(`🔄 On-demand sync: updated ${updated} matches with resolved teams`);
-      }
+    if (updated > 0) {
+      this.logger.log(`🔄 On-demand sync: updated ${updated} matches with resolved teams`);
     }
 
-    // After football-data.org, try worldcup26.ir for any remaining Unknown matches
+    // Also try the dedicated worldcup26.ir R32 fallback for any still-Unknown matches
     const updatedFromWC26 = await this.syncUnknownMatchesFromWorldCup26();
     return updated + updatedFromWC26;
   }

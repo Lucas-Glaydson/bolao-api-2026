@@ -13,9 +13,9 @@ import {
   AutoFillMissingPredictionsUseCase,
 } from '../application/use-cases/match';
 import {
-  FootballDataApiProvider,
   IFootballApiProvider,
   WorldCup26ApiProvider,
+  WorldCup26FullApiProvider,
 } from '../infrastructure/external-api';
 import { RankingModule } from './ranking.module';
 
@@ -25,9 +25,10 @@ import { RankingModule } from './ranking.module';
   providers: [
     {
       provide: 'IFootballApiProvider',
-      useClass: FootballDataApiProvider,
+      useClass: WorldCup26FullApiProvider,
     },
     WorldCup26ApiProvider,
+    WorldCup26FullApiProvider,
     SyncMatchesUseCase,
     SmartSyncMatchesUseCase,
     GetAllMatchesUseCase,

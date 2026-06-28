@@ -91,8 +91,8 @@ export class MatchRepository implements IMatchRepository {
       status: { $in: [MatchStatus.SCHEDULED, MatchStatus.LIVE] },
       kickoffAt: { $lte: kickoffThreshold },
       syncedAt: { $lte: syncThreshold },
-      // Only API-provided fixtures (numeric ids)
-      externalId: { $regex: /^\d+$/ },
+      // Include both numeric IDs (legacy football-data.org) and wc26-* IDs (worldcup26.ir)
+      externalId: { $regex: /^(\d+|wc26-)/ },
     };
 
     if (stages && stages.length > 0) {
