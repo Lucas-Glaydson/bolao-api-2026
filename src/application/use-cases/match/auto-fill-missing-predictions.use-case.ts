@@ -70,6 +70,7 @@ export class AutoFillMissingPredictionsUseCase {
                 predictedHomeScore: 0,
                 predictedAwayScore: 0,
                 tiebreakWinner: null,
+                isAutoFilled: true,
                 canEditUntil,
                 lockedAt: now,
                 pointsAwarded: null,

@@ -91,6 +91,7 @@ export class PredictionRepository implements IPredictionRepository {
       predictedHomeScore: doc.predictedHomeScore,
       predictedAwayScore: doc.predictedAwayScore,
       tiebreakWinner: doc.tiebreakWinner ?? null,
+      isAutoFilled: doc.isAutoFilled ?? false,
       lockedAt: doc.lockedAt,
       canEditUntil: doc.canEditUntil,
       pointsAwarded: doc.pointsAwarded,

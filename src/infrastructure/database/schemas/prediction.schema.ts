@@ -20,6 +20,9 @@ export class PredictionDocument {
   @Prop({ type: String, enum: ['home', 'away'], default: null })
   tiebreakWinner: 'home' | 'away' | null;
 
+  @Prop({ type: Boolean, default: false })
+  isAutoFilled: boolean;
+
   @Prop({ type: Date, default: null })
   lockedAt: Date | null;
 

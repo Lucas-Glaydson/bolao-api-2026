@@ -5,6 +5,7 @@ export interface Prediction {
   predictedHomeScore: number;
   predictedAwayScore: number;
   tiebreakWinner: 'home' | 'away' | null;
+  isAutoFilled: boolean;
   lockedAt: Date | null;
   canEditUntil: Date;
   pointsAwarded: number | null;

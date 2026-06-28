@@ -118,8 +118,13 @@ export class MatchRepository implements IMatchRepository {
     externalId: string,
     data: Partial<Match>,
   ): Promise<Match> {
+    // Strip undefined values so existing DB fields (e.g. manually-set team names)
+    // are not overwritten when the API returns null for those fields.
+    const cleanData = Object.fromEntries(
+      Object.entries(data).filter(([, v]) => v !== undefined),
+    );
     const match = await this.matchModel
-      .findOneAndUpdate({ externalId }, data, { returnDocument: 'after', upsert: true })
+      .findOneAndUpdate({ externalId }, { $set: cleanData }, { returnDocument: 'after', upsert: true })
       .exec();
     return this.toEntity(match);
   }

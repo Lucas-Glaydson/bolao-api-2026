@@ -55,6 +55,17 @@ export class CalculatePointsUseCase {
               continue;
             }
 
+            // Auto-filled predictions always receive 0 pts
+            if (prediction.isAutoFilled) {
+              await this.predictionRepository.update(prediction.id, {
+                pointsAwarded: 0,
+                exactScoreHit: false,
+                outcomeHit: false,
+              });
+              processed++;
+              continue;
+            }
+
             // Calculate points
             const result = this.calculatePredictionPoints(
               prediction.predictedHomeScore,
