@@ -144,11 +144,22 @@ export class CalculatePointsUseCase {
       };
     }
 
-    // ── Correct outcome (winner or draw) → basePoints (1 pt) ─────────────────
+    // ── Correct outcome (winner or draw) ─────────────────────────────────────
     const predictedWinner = this.determineWinner(predictedHome, predictedAway);
     const actualWinner = this.determineWinner(actualHome, actualAway);
 
     if (predictedWinner === actualWinner) {
+      // Resultado + pênaltis: user predicted draw AND match went to penalties
+      // AND user got the penalty winner right → 2 pts
+      const matchWentToPenalties =
+        matchWinner !== null && matchWinner !== MatchWinner.DRAW;
+      const predictedDraw = predictedHome === predictedAway;
+
+      if (matchWentToPenalties && predictedDraw && tiebreakWinner === matchWinner) {
+        return { points: basePoints + 1, exactScore: false, outcomeHit: true };
+      }
+
+      // Resultado simples → basePoints (1 pt)
       return { points: basePoints, exactScore: false, outcomeHit: true };
     }
 
