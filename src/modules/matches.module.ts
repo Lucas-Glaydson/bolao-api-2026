@@ -15,6 +15,7 @@ import {
 import {
   FootballDataApiProvider,
   IFootballApiProvider,
+  WorldCup26ApiProvider,
 } from '../infrastructure/external-api';
 import { RankingModule } from './ranking.module';
 
@@ -26,6 +27,7 @@ import { RankingModule } from './ranking.module';
       provide: 'IFootballApiProvider',
       useClass: FootballDataApiProvider,
     },
+    WorldCup26ApiProvider,
     SyncMatchesUseCase,
     SmartSyncMatchesUseCase,
     GetAllMatchesUseCase,

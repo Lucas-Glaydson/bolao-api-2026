@@ -2,6 +2,7 @@ import { Injectable, Logger, Inject, OnApplicationBootstrap } from '@nestjs/comm
 import { Cron } from '@nestjs/schedule';
 import { MatchRepository } from '@infrastructure/database/repositories';
 import type { IFootballApiProvider } from '@infrastructure/external-api';
+import { WorldCup26ApiProvider } from '@infrastructure/external-api';
 import { MatchStage } from '@domain/entities';
 import { GenerateKnockoutMatchesUseCase } from './generate-knockout-matches.use-case';
 import { AutoCalculatePointsUseCase } from './auto-calculate-points.use-case';
@@ -16,6 +17,7 @@ export class SyncMatchesUseCase implements OnApplicationBootstrap {
     private readonly footballApiProvider: IFootballApiProvider,
     private readonly generateKnockoutUseCase: GenerateKnockoutMatchesUseCase,
     private readonly autoCalculatePointsUseCase: AutoCalculatePointsUseCase,
+    private readonly worldCup26Provider: WorldCup26ApiProvider,
   ) {}
 
   /**
@@ -155,7 +157,6 @@ export class SyncMatchesUseCase implements OnApplicationBootstrap {
    */
   async syncUnknownMatches(): Promise<number> {
     const apiKey = this.footballApiProvider['apiKey'] as string | undefined;
-    if (!apiKey) return 0;
 
     const all = await this.matchRepository.findAll();
     const unknowns = all.filter(
@@ -165,31 +166,94 @@ export class SyncMatchesUseCase implements OnApplicationBootstrap {
     if (unknowns.length === 0) return 0;
 
     let updated = 0;
-    await Promise.all(
-      unknowns.map(async (match) => {
-        try {
-          const fresh = await this.footballApiProvider.fetchMatchById(match.externalId);
-          if (
-            fresh &&
-            fresh.homeTeam &&
-            fresh.awayTeam &&
-            fresh.homeTeam !== 'Unknown' &&
-            fresh.awayTeam !== 'Unknown'
-          ) {
-            await this.matchRepository.upsertByExternalId(match.externalId, fresh);
-            updated++;
-          }
-        } catch {
-          // ignore individual fetch errors
-        }
-      }),
-    );
 
-    if (updated > 0) {
-      this.logger.log(`🔄 On-demand sync: updated ${updated} matches with resolved teams`);
+    // Try football-data.org first (if configured)
+    if (apiKey) {
+      await Promise.all(
+        unknowns.map(async (match) => {
+          try {
+            const fresh = await this.footballApiProvider.fetchMatchById(match.externalId);
+            if (
+              fresh &&
+              fresh.homeTeam &&
+              fresh.awayTeam &&
+              fresh.homeTeam !== 'Unknown' &&
+              fresh.awayTeam !== 'Unknown'
+            ) {
+              await this.matchRepository.upsertByExternalId(match.externalId, fresh);
+              updated++;
+            }
+          } catch {
+            // ignore individual fetch errors
+          }
+        }),
+      );
+
+      if (updated > 0) {
+        this.logger.log(`🔄 On-demand sync: updated ${updated} matches with resolved teams`);
+      }
     }
 
-    return updated;
+    // After football-data.org, try worldcup26.ir for any remaining Unknown matches
+    const updatedFromWC26 = await this.syncUnknownMatchesFromWorldCup26();
+    return updated + updatedFromWC26;
+  }
+
+  /**
+   * Fetches R32 games from worldcup26.ir and fills in team names for any
+   * DB matches that still show "Unknown".
+   *
+   * Matching strategy: both lists (DB sorted by kickoffAt ASC and
+   * worldcup26.ir sorted by local_date ASC) produce the same chronological
+   * order, so they are aligned 1-to-1 by array index.
+   */
+  async syncUnknownMatchesFromWorldCup26(): Promise<number> {
+    try {
+      const dbR32 = await this.matchRepository.findByStage(MatchStage.ROUND_OF_32);
+      const stillUnknown = dbR32.filter((m) => m.homeTeam === 'Unknown' || m.awayTeam === 'Unknown');
+      if (stillUnknown.length === 0) return 0;
+
+      const wc26Games = await this.worldCup26Provider.fetchR32GamesSorted();
+
+      if (wc26Games.length !== dbR32.length) {
+        this.logger.warn(
+          `worldcup26.ir returned ${wc26Games.length} R32 games but DB has ${dbR32.length} — skipping fallback sync`,
+        );
+        return 0;
+      }
+
+      let updated = 0;
+      for (let i = 0; i < dbR32.length; i++) {
+        const dbMatch = dbR32[i];
+        const wc26 = wc26Games[i];
+
+        if (
+          (dbMatch.homeTeam !== 'Unknown' && dbMatch.awayTeam !== 'Unknown') ||
+          !wc26.homeTeam ||
+          !wc26.awayTeam
+        ) {
+          continue;
+        }
+
+        await this.matchRepository.upsertByExternalId(dbMatch.externalId, {
+          homeTeam: wc26.homeTeam,
+          awayTeam: wc26.awayTeam,
+        });
+        this.logger.log(
+          `🌐 worldcup26.ir resolved: ${wc26.homeTeam} vs ${wc26.awayTeam} (externalId ${dbMatch.externalId})`,
+        );
+        updated++;
+      }
+
+      if (updated > 0) {
+        this.logger.log(`🌐 worldcup26.ir fallback: resolved ${updated} R32 matches`);
+      }
+
+      return updated;
+    } catch (err) {
+      this.logger.warn(`worldcup26.ir fallback failed: ${err.message}`);
+      return 0;
+    }
   }
 }
 
