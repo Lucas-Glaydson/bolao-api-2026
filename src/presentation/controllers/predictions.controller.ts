@@ -62,58 +62,58 @@ export class PredictionsController {
 
   @Get('board')
   async getAllPredictions(): Promise<PredictionWithUserDto[]> {
-    const predictions = await this.getAllPredictionsUseCase.execute();
-    
-    // Fetch user data for each prediction
-    const enrichedPredictions = await Promise.all(
-      predictions.map(async (prediction) => {
-        const user = await this.userRepository.findById(prediction.userId);
-        return {
-          id: prediction.id,
-          userId: prediction.userId,
-          userName: user?.name || 'Unknown',
-          userEmail: user?.email || 'Unknown',
-          matchId: prediction.matchId,
-          predictedHomeScore: prediction.predictedHomeScore,
-          predictedAwayScore: prediction.predictedAwayScore,
-          tiebreakWinner: prediction.tiebreakWinner,
-          pointsAwarded: prediction.pointsAwarded,
-          exactScoreHit: prediction.exactScoreHit,
-          outcomeHit: prediction.outcomeHit,
-          createdAt: prediction.createdAt,
-        };
-      }),
-    );
+    const [predictions, allUsers] = await Promise.all([
+      this.getAllPredictionsUseCase.execute(),
+      this.userRepository.findAll(),
+    ]);
 
-    return enrichedPredictions;
+    const userMap = new Map(allUsers.map((u) => [u.id, u]));
+
+    return predictions.map((prediction) => {
+      const user = userMap.get(prediction.userId);
+      return {
+        id: prediction.id,
+        userId: prediction.userId,
+        userName: user?.name || 'Unknown',
+        userEmail: user?.email || 'Unknown',
+        matchId: prediction.matchId,
+        predictedHomeScore: prediction.predictedHomeScore,
+        predictedAwayScore: prediction.predictedAwayScore,
+        tiebreakWinner: prediction.tiebreakWinner,
+        pointsAwarded: prediction.pointsAwarded,
+        exactScoreHit: prediction.exactScoreHit,
+        outcomeHit: prediction.outcomeHit,
+        createdAt: prediction.createdAt,
+      };
+    });
   }
 
   @Get('match/:matchId')
   async getByMatch(@Param('matchId') matchId: string): Promise<PredictionWithUserDto[]> {
-    const predictions = await this.getPredictionsByMatchUseCase.execute(matchId);
-    
-    // Fetch user data for each prediction
-    const enrichedPredictions = await Promise.all(
-      predictions.map(async (prediction) => {
-        const user = await this.userRepository.findById(prediction.userId);
-        return {
-          id: prediction.id,
-          userId: prediction.userId,
-          userName: user?.name || 'Unknown',
-          userEmail: user?.email || 'Unknown',
-          matchId: prediction.matchId,
-          predictedHomeScore: prediction.predictedHomeScore,
-          predictedAwayScore: prediction.predictedAwayScore,
-          tiebreakWinner: prediction.tiebreakWinner,
-          pointsAwarded: prediction.pointsAwarded,
-          exactScoreHit: prediction.exactScoreHit,
-          outcomeHit: prediction.outcomeHit,
-          createdAt: prediction.createdAt,
-        };
-      }),
-    );
+    const [predictions, allUsers] = await Promise.all([
+      this.getPredictionsByMatchUseCase.execute(matchId),
+      this.userRepository.findAll(),
+    ]);
 
-    return enrichedPredictions;
+    const userMap = new Map(allUsers.map((u) => [u.id, u]));
+
+    return predictions.map((prediction) => {
+      const user = userMap.get(prediction.userId);
+      return {
+        id: prediction.id,
+        userId: prediction.userId,
+        userName: user?.name || 'Unknown',
+        userEmail: user?.email || 'Unknown',
+        matchId: prediction.matchId,
+        predictedHomeScore: prediction.predictedHomeScore,
+        predictedAwayScore: prediction.predictedAwayScore,
+        tiebreakWinner: prediction.tiebreakWinner,
+        pointsAwarded: prediction.pointsAwarded,
+        exactScoreHit: prediction.exactScoreHit,
+        outcomeHit: prediction.outcomeHit,
+        createdAt: prediction.createdAt,
+      };
+    });
   }
 
   private toResponseDto(prediction: any): PredictionResponseDto {

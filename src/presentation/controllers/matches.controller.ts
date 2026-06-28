@@ -128,7 +128,11 @@ export class MatchesController {
   private toResponseDto(match: Match): MatchResponseDto {
     const now = new Date();
     const oneHourBefore = new Date(match.kickoffAt.getTime() - 60 * 60 * 1000);
-    const canPredict = now < oneHourBefore;
+    const teamsKnown = (t: string) => !!t && !t.startsWith('TBD') && t !== 'Unknown';
+    const canPredict =
+      teamsKnown(match.homeTeam) &&
+      teamsKnown(match.awayTeam) &&
+      now < oneHourBefore;
 
     return {
       id: match.id,

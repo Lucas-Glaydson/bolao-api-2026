@@ -39,6 +39,14 @@ export class UpsertPredictionUseCase {
       );
     }
 
+    // Knockout match: both teams must be determined before accepting predictions
+    const teamsKnown = (t: string) => !!t && !t.startsWith('TBD') && t !== 'Unknown';
+    if (!teamsKnown(match.homeTeam) || !teamsKnown(match.awayTeam)) {
+      throw new BadRequestException(
+        'This match is not yet available for predictions — teams have not been determined.',
+      );
+    }
+
     // Check if match is still open for predictions (1 hour before kickoff)
     const now = new Date();
     const oneHourBeforeKickoff = new Date(

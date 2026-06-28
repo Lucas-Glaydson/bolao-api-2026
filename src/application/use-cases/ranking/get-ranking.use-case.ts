@@ -22,15 +22,20 @@ export class GetRankingUseCase {
   ) {}
 
   async execute(): Promise<RankingEntry[]> {
-    // Get all predictions
-    const allPredictions = await this.predictionRepository.findAll();
+    // Fetch all data in parallel — single query each, no N+1
+    const [allPredictions, allUsers] = await Promise.all([
+      this.predictionRepository.findAll(),
+      this.userRepository.findAll(),
+    ]);
+
+    const userLookup = new Map(allUsers.map((u) => [u.id, u]));
 
     // Group by user
     const userMap = new Map<string, RankingEntry>();
 
     for (const prediction of allPredictions) {
       if (!userMap.has(prediction.userId)) {
-        const user = await this.userRepository.findById(prediction.userId);
+        const user = userLookup.get(prediction.userId);
         userMap.set(prediction.userId, {
           userId: prediction.userId,
           userName: user?.name || 'Unknown',

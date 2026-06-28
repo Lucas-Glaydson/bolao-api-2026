@@ -2,6 +2,7 @@ import { Injectable, Logger, Inject, OnApplicationBootstrap } from '@nestjs/comm
 import { Cron } from '@nestjs/schedule';
 import { MatchRepository } from '@infrastructure/database/repositories';
 import type { IFootballApiProvider } from '@infrastructure/external-api';
+import { MatchStage } from '@domain/entities';
 import { GenerateKnockoutMatchesUseCase } from './generate-knockout-matches.use-case';
 import { AutoCalculatePointsUseCase } from './auto-calculate-points.use-case';
 
@@ -104,14 +105,24 @@ export class SyncMatchesUseCase implements OnApplicationBootstrap {
         }
       }
 
-      // After syncing matches, update knockout brackets if needed
+      // After syncing matches, update knockout brackets only if the API
+      // does NOT yet provide R32 matches (early in the tournament).
+      // Once the API provides them, its data is authoritative — generating
+      // fake records would create duplicates with wrong dates.
       try {
-        this.logger.log('🏆 Checking if knockout matches need updating...');
-        const knockoutResult = await this.generateKnockoutUseCase.execute();
-        if (knockoutResult.updated > 0) {
-          this.logger.log(
-            `✅ Updated ${knockoutResult.updated} knockout matches with qualified teams`,
-          );
+        const r32Matches = await this.matchRepository.findByStage(MatchStage.ROUND_OF_32);
+        const apiR32 = r32Matches.filter((m) => /^\d+$/.test(m.externalId));
+
+        if (apiR32.length === 0) {
+          this.logger.log('🏆 API has no R32 data yet — generating bracket from group standings...');
+          const knockoutResult = await this.generateKnockoutUseCase.execute();
+          if (knockoutResult.generated > 0 || knockoutResult.updated > 0) {
+            this.logger.log(
+              `✅ Bracket: ${knockoutResult.generated} created, ${knockoutResult.updated} updated`,
+            );
+          }
+        } else {
+          this.logger.log(`🏆 API provides ${apiR32.length} R32 matches — skipping bracket generation`);
         }
       } catch (error) {
         this.logger.error('Error updating knockout matches', error.message);

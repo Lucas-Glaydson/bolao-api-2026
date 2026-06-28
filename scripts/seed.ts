@@ -37,29 +37,6 @@ async function bootstrap() {
       console.log('ℹ️  Admin user already exists');
     }
 
-    // Create sample users
-    const users = [
-      { name: 'João Silva', email: 'joao@bolao.com', password: 'senha123' },
-      { name: 'Maria Santos', email: 'maria@bolao.com', password: 'senha123' },
-      { name: 'Pedro Oliveira', email: 'pedro@bolao.com', password: 'senha123' },
-    ];
-
-    for (const user of users) {
-      const existing = await userRepository.findByEmail(user.email);
-      if (!existing) {
-        const passwordHash = await bcrypt.hash(user.password, 10);
-        await userRepository.create({
-          name: user.name,
-          email: user.email,
-          passwordHash,
-          role: UserRole.USER,
-          isActive: true,
-          mustChangePassword: true,
-        });
-        console.log(`✅ User created: ${user.name}`);
-      }
-    }
-
     // Create score rules
     const scoreRules = [
       { stage: MatchStage.GROUP_STAGE, basePoints: 1, exactScoreBonus: 2 },
@@ -111,7 +88,6 @@ async function bootstrap() {
     console.log('🎉 Database seeding completed successfully!');
     console.log('\n📝 You can now login with:');
     console.log('   Admin: admin@bolao.com / admin123');
-    console.log('   Users: joao@bolao.com, maria@bolao.com, pedro@bolao.com / senha123');
   } catch (error) {
     console.error('❌ Error seeding database:', error);
   } finally {

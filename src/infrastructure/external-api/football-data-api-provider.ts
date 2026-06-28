@@ -134,14 +134,21 @@ export class FootballDataApiProvider implements IFootballApiProvider {
     }
   }
 
-  /** football-data.org stage string → internal MatchStage */
+  /** football-data.org stage string → internal MatchStage
+   *
+   * football-data.org v4 uses LAST_32 / LAST_16 for knockout rounds.
+   * The legacy aliases ROUND_OF_32 / ROUND_OF_16 are kept as fallback.
+   */
   private mapStage(s: string): MatchStage {
     switch (s) {
       case 'GROUP_STAGE':    return MatchStage.GROUP_STAGE;
+      case 'LAST_32':
       case 'ROUND_OF_32':    return MatchStage.ROUND_OF_32;
+      case 'LAST_16':
       case 'ROUND_OF_16':    return MatchStage.ROUND_OF_16;
       case 'QUARTER_FINALS': return MatchStage.QUARTER_FINALS;
       case 'SEMI_FINALS':    return MatchStage.SEMI_FINALS;
+      case 'THIRD_PLACE':    return MatchStage.THIRD_PLACE;
       case 'FINAL':          return MatchStage.FINAL;
       default:               return MatchStage.GROUP_STAGE;
     }
@@ -164,10 +171,13 @@ export class FootballDataApiProvider implements IFootballApiProvider {
       return `Group ${g} - ${matchday ?? '?'}`;
     }
     const labels: Record<string, string> = {
+      LAST_32:        '32 avos de final',
       ROUND_OF_32:    '32 avos de final',
+      LAST_16:        'Oitavas de final',
       ROUND_OF_16:    'Oitavas de final',
       QUARTER_FINALS: 'Quartas de final',
       SEMI_FINALS:    'Semifinais',
+      THIRD_PLACE:    'Terceiro lugar',
       FINAL:          'Final',
     };
     return labels[stage] ?? stage;

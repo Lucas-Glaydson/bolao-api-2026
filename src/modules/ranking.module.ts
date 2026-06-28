@@ -7,6 +7,7 @@ import {
   OpenStageUseCase,
   CloseStageUseCase,
   GetAllStagesUseCase,
+  AutoManageStagesUseCase,
 } from '../application/use-cases/ranking';
 
 @Module({
@@ -17,6 +18,7 @@ import {
     OpenStageUseCase,
     CloseStageUseCase,
     GetAllStagesUseCase,
+    AutoManageStagesUseCase,
   ],
   exports: [CalculatePointsUseCase],
 })
