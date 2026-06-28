@@ -148,9 +148,49 @@ export class SyncMatchesUseCase implements OnApplicationBootstrap {
     }
   }
 
-  // Full sync disabled to preserve the 100 req/day API quota.
-  // Use POST /matches/sync to trigger manually when needed.
-  // Automatic per-match sync is handled by SmartSyncMatchesUseCase.
+  /**
+   * Fetches only the matches with Unknown teams from the external API.
+   * Called on-demand by the controller so the response always has fresh data.
+   * Uses individual match requests (not the bulk endpoint) to save quota.
+   */
+  async syncUnknownMatches(): Promise<number> {
+    const apiKey = this.footballApiProvider['apiKey'] as string | undefined;
+    if (!apiKey) return 0;
+
+    const all = await this.matchRepository.findAll();
+    const unknowns = all.filter(
+      (m) => m.homeTeam === 'Unknown' || m.awayTeam === 'Unknown',
+    );
+
+    if (unknowns.length === 0) return 0;
+
+    let updated = 0;
+    await Promise.all(
+      unknowns.map(async (match) => {
+        try {
+          const fresh = await this.footballApiProvider.fetchMatchById(match.externalId);
+          if (
+            fresh &&
+            fresh.homeTeam &&
+            fresh.awayTeam &&
+            fresh.homeTeam !== 'Unknown' &&
+            fresh.awayTeam !== 'Unknown'
+          ) {
+            await this.matchRepository.upsertByExternalId(match.externalId, fresh);
+            updated++;
+          }
+        } catch {
+          // ignore individual fetch errors
+        }
+      }),
+    );
+
+    if (updated > 0) {
+      this.logger.log(`🔄 On-demand sync: updated ${updated} matches with resolved teams`);
+    }
+
+    return updated;
+  }
 }
 
 

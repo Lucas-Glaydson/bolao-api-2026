@@ -45,7 +45,7 @@ export class ScoreRuleRepository implements IScoreRuleRepository {
     data: Partial<ScoreRule>,
   ): Promise<ScoreRule | null> {
     const scoreRule = await this.scoreRuleModel
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, { returnDocument: 'after' })
       .exec();
     return scoreRule ? this.toEntity(scoreRule) : null;
   }

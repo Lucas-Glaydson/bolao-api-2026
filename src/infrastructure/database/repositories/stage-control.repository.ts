@@ -52,7 +52,7 @@ export class StageControlRepository implements IStageControlRepository {
     data: Partial<StageControl>,
   ): Promise<StageControl | null> {
     const stageControl = await this.stageControlModel
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, { returnDocument: 'after' })
       .exec();
     return stageControl ? this.toEntity(stageControl) : null;
   }

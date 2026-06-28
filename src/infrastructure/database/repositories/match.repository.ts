@@ -109,7 +109,7 @@ export class MatchRepository implements IMatchRepository {
 
   async update(id: string, data: Partial<Match>): Promise<Match | null> {
     const match = await this.matchModel
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, { returnDocument: 'after' })
       .exec();
     return match ? this.toEntity(match) : null;
   }
@@ -119,7 +119,7 @@ export class MatchRepository implements IMatchRepository {
     data: Partial<Match>,
   ): Promise<Match> {
     const match = await this.matchModel
-      .findOneAndUpdate({ externalId }, data, { new: true, upsert: true })
+      .findOneAndUpdate({ externalId }, data, { returnDocument: 'after', upsert: true })
       .exec();
     return this.toEntity(match);
   }

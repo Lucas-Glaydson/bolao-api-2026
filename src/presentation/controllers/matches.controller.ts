@@ -78,7 +78,12 @@ export class MatchesController {
 
   @Get()
   async findAll(): Promise<MatchResponseDto[]> {
-    const matches = await this.getAllMatchesUseCase.execute();
+    let matches = await this.getAllMatchesUseCase.execute();
+    const hasUnknown = matches.some((m) => m.homeTeam === 'Unknown' || m.awayTeam === 'Unknown');
+    if (hasUnknown) {
+      await this.syncMatchesUseCase.syncUnknownMatches();
+      matches = await this.getAllMatchesUseCase.execute();
+    }
     return matches.map((match) => this.toResponseDto(match));
   }
 
@@ -92,7 +97,12 @@ export class MatchesController {
 
   @Get('stage/:stage')
   async getByStage(@Param('stage') stage: MatchStage): Promise<MatchResponseDto[]> {
-    const matches = await this.getMatchesByStageUseCase.execute(stage);
+    let matches = await this.getMatchesByStageUseCase.execute(stage);
+    const hasUnknown = matches.some((m) => m.homeTeam === 'Unknown' || m.awayTeam === 'Unknown');
+    if (hasUnknown) {
+      await this.syncMatchesUseCase.syncUnknownMatches();
+      matches = await this.getMatchesByStageUseCase.execute(stage);
+    }
     return matches.map((match) => this.toResponseDto(match));
   }
 

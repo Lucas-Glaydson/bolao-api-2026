@@ -55,7 +55,7 @@ export class PredictionRepository implements IPredictionRepository {
     data: Partial<Prediction>,
   ): Promise<Prediction | null> {
     const prediction = await this.predictionModel
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, { returnDocument: 'after' })
       .exec();
     return prediction ? this.toEntity(prediction) : null;
   }
@@ -66,7 +66,7 @@ export class PredictionRepository implements IPredictionRepository {
     data: Partial<Prediction>,
   ): Promise<Prediction> {
     const prediction = await this.predictionModel
-      .findOneAndUpdate({ userId, matchId }, data, { new: true, upsert: true })
+      .findOneAndUpdate({ userId, matchId }, data, { returnDocument: 'after', upsert: true })
       .exec();
     return this.toEntity(prediction);
   }

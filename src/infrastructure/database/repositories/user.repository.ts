@@ -35,7 +35,7 @@ export class UserRepository implements IUserRepository {
 
   async update(id: string, data: Partial<User>): Promise<User | null> {
     const user = await this.userModel
-      .findByIdAndUpdate(id, data, { new: true })
+      .findByIdAndUpdate(id, data, { returnDocument: 'after' })
       .exec();
     return user ? this.toEntity(user) : null;
   }
