@@ -161,6 +161,7 @@ export class MatchesController {
       officialHomeScore: match.officialHomeScore,
       officialAwayScore: match.officialAwayScore,
       winner: match.winner,
+      penaltyWinner: match.penaltyWinner as 'home' | 'away' | null,
       canPredict,
       syncedAt: match.syncedAt,
       createdAt: match.createdAt,

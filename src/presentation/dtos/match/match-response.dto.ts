@@ -15,6 +15,7 @@ export class MatchResponseDto {
   officialHomeScore: number | null;
   officialAwayScore: number | null;
   winner: string | null;
+  penaltyWinner: 'home' | 'away' | null;
   canPredict: boolean;
   syncedAt: Date;
   createdAt: Date;
