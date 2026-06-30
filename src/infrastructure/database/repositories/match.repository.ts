@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { IMatchRepository } from '../../../domain/repositories';
-import { Match, MatchStage, MatchStatus } from '../../../domain/entities';
+import { Match, MatchStage, MatchStatus, MatchWinner } from '../../../domain/entities';
 import { MatchDocument } from '../schemas/match.schema';
 
 @Injectable()
@@ -123,6 +123,24 @@ export class MatchRepository implements IMatchRepository {
     const cleanData = Object.fromEntries(
       Object.entries(data).filter(([, v]) => v !== undefined),
     );
+
+    // Preserve a confirmed penalty winner: once match.winner is HOME or AWAY
+    // (set by a successful ESPN sync), don't let a later sync downgrade it to
+    // DRAW just because ESPN is temporarily unavailable or returns no winner flag.
+    if (cleanData.winner === MatchWinner.DRAW) {
+      const existing = await this.matchModel
+        .findOne({ externalId })
+        .select('winner')
+        .lean()
+        .exec();
+      if (
+        existing?.winner === MatchWinner.HOME ||
+        existing?.winner === MatchWinner.AWAY
+      ) {
+        delete cleanData.winner;
+      }
+    }
+
     const match = await this.matchModel
       .findOneAndUpdate({ externalId }, { $set: cleanData }, { returnDocument: 'after', upsert: true })
       .exec();

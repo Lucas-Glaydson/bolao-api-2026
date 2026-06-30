@@ -257,9 +257,12 @@ export class WorldCup26FullApiProvider implements IFootballApiProvider {
         if (inProgress) (game as any)._live = true;
 
         // Capture penalty winner: ESPN marks the winning team with winner=true
+        // Use truthy check to handle both boolean true and string 'true' from the API
         if (finished && home.score === away.score) {
-          if (home.winner === true) (game as any)._penaltyWinner = 'home';
-          else if (away.winner === true) (game as any)._penaltyWinner = 'away';
+          const homeWon = home.winner === true || home.winner === 'true';
+          const awayWon = away.winner === true || away.winner === 'true';
+          if (homeWon) (game as any)._penaltyWinner = 'home';
+          else if (awayWon) (game as any)._penaltyWinner = 'away';
         }
 
         updated++;
