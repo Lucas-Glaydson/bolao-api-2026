@@ -34,8 +34,12 @@ export class AutoCalculatePointsUseCase {
       for (const match of finishedMatches) {
         const matchId = match.id;
 
-        // Skip if already processed
-        if (this.processedMatches.has(matchId)) {
+        // Cache key includes penaltyWinner so that when the sync sets
+        // penaltyWinner on a previously-processed match, this loop detects
+        // the state change and triggers recalculation automatically.
+        const cacheKey = `${matchId}:${match.penaltyWinner ?? 'null'}`;
+
+        if (this.processedMatches.has(cacheKey)) {
           continue;
         }
 
@@ -47,35 +51,39 @@ export class AutoCalculatePointsUseCase {
 
           if (predictions.length === 0) {
             this.logger.debug(`No predictions for match ${matchId}`);
-            this.processedMatches.add(matchId);
+            this.processedMatches.add(cacheKey);
             continue;
           }
 
-          // Check if any prediction still needs calculation
-          const needsCalculation = predictions.some(
-            (p) => p.pointsAwarded === null,
-          );
+          const isPenaltyMatch = match.penaltyWinner !== null;
+
+          // Recalculate when:
+          // 1. Any prediction is still uncalculated (pointsAwarded === null), OR
+          // 2. It's a penalty match — penaltyWinner may have just been synced
+          //    and the tiebreak bonus needs to be (re)applied.
+          const needsCalculation =
+            isPenaltyMatch ||
+            predictions.some((p) => p.pointsAwarded === null);
 
           if (!needsCalculation) {
             this.logger.debug(
               `All predictions already calculated for match ${matchId}`,
             );
-            this.processedMatches.add(matchId);
+            this.processedMatches.add(cacheKey);
             continue;
           }
 
-          // Points will be calculated by the main CalculatePointsUseCase
-          // which processes all finished matches
           processed++;
-          this.processedMatches.add(matchId);
+          this.processedMatches.add(cacheKey);
 
           this.logger.log(
-            `✅ Marked match for points calculation: ${match.homeTeam} vs ${match.awayTeam} (${predictions.length} predictions)`,
+            `✅ Marked match for points calculation: ${match.homeTeam} vs ${match.awayTeam}` +
+            `${isPenaltyMatch ? ` (penalty: ${match.penaltyWinner})` : ''} (${predictions.length} predictions)`,
           );
         } catch (error) {
           this.logger.error(
             `Error checking match ${matchId}`,
-            error.message,
+            (error as Error).message,
           );
           errors++;
         }
@@ -87,10 +95,10 @@ export class AutoCalculatePointsUseCase {
         try {
           const result = await this.calculatePointsUseCase.execute();
           this.logger.log(
-            `📊 Points calculation complete: ${result.processed} matches processed`,
+            `📊 Points calculation complete: ${result.processed} predictions processed`,
           );
         } catch (error) {
-          this.logger.error('Error in points calculation', error.message);
+          this.logger.error('Error in points calculation', (error as Error).message);
         }
       }
 
@@ -102,7 +110,7 @@ export class AutoCalculatePointsUseCase {
 
       return { processed, errors };
     } catch (error) {
-      this.logger.error('Error in auto calculate points', error.message);
+      this.logger.error('Error in auto calculate points', (error as Error).message);
       throw error;
     }
   }
