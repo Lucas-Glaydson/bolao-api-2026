@@ -44,9 +44,21 @@ export class CalculatePointsUseCase {
             match.id,
           );
 
+          // A penalty match is one where the score is a draw but the winner
+          // is HOME or AWAY (decided by penalty shootout). We must always
+          // recalculate predictions for these matches because the penalty
+          // winner may have been synced after the initial calculation.
+          const isPenaltyMatch =
+            match.officialHomeScore !== null &&
+            match.officialAwayScore !== null &&
+            match.officialHomeScore === match.officialAwayScore &&
+            match.winner !== null &&
+            match.winner !== MatchWinner.DRAW;
+
           for (const prediction of predictions) {
-            // Skip if already calculated
-            if (prediction.pointsAwarded !== null) {
+            // Skip if already calculated, unless it's a penalty match
+            // (penalty winner may have been set after the first run)
+            if (prediction.pointsAwarded !== null && !isPenaltyMatch) {
               continue;
             }
 
