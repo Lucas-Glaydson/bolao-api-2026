@@ -276,6 +276,59 @@ export class WorldCup26FullApiProvider implements IFootballApiProvider {
 
   // ── IFootballApiProvider implementation ──────────────────────────────────
 
+  /**
+   * Fallback penalty-winner inference using the bracket.
+   *
+   * When ESPN doesn't supply a `winner` flag on competitors (e.g. API lag,
+   * missing data), we can still deduce who advanced: the loser of a knockout
+   * draw is eliminated and won't appear in any future match, while the winner
+   * will. For semi-finals both teams get another game (final / 3rd-place), so
+   * this heuristic is intentionally skipped for those — we rely on ESPN there.
+   */
+  private inferPenaltyWinnersFromBracket(games: Wc26Game[]): void {
+    // Knockout stage type codes from worldcup26.ir
+    const knockoutTypes = new Set(['R32', 'R16', 'QF', 'SF', 'F', '3RD', 'THIRD_PLACE']);
+
+    // Teams that appear in at least one non-finished (future) match
+    const teamsWithFutureMatch = new Set<string>();
+    for (const g of games) {
+      if (!this.isFinished(g)) {
+        if (g.home_team_name_en) teamsWithFutureMatch.add(g.home_team_name_en.trim());
+        if (g.away_team_name_en) teamsWithFutureMatch.add(g.away_team_name_en.trim());
+      }
+    }
+
+    for (const g of games) {
+      // Skip: already have penalty winner, not finished, not a knockout draw
+      if (
+        (g as any)._penaltyWinner ||
+        !this.isFinished(g) ||
+        !knockoutTypes.has((g.type || '').toUpperCase()) ||
+        g.home_score == null ||
+        g.away_score == null ||
+        Number(g.home_score) !== Number(g.away_score)
+      ) {
+        continue;
+      }
+
+      const homeAdv = !!(g.home_team_name_en && teamsWithFutureMatch.has(g.home_team_name_en.trim()));
+      const awayAdv = !!(g.away_team_name_en && teamsWithFutureMatch.has(g.away_team_name_en.trim()));
+
+      // Only infer when exactly one team advanced (eliminates SF ambiguity)
+      if (homeAdv && !awayAdv) {
+        (g as any)._penaltyWinner = 'home';
+        this.logger.log(
+          `Bracket inference: ${g.home_team_name_en} won on penalties vs ${g.away_team_name_en}`,
+        );
+      } else if (awayAdv && !homeAdv) {
+        (g as any)._penaltyWinner = 'away';
+        this.logger.log(
+          `Bracket inference: ${g.away_team_name_en} won on penalties vs ${g.home_team_name_en}`,
+        );
+      }
+    }
+  }
+
   async fetchMatches(): Promise<Partial<Match>[]> {
     this.logger.log('Fetching all matches from worldcup26.ir + ESPN');
 
@@ -289,6 +342,9 @@ export class WorldCup26FullApiProvider implements IFootballApiProvider {
 
     // Enrich with live ESPN scores
     await this.mergeEspnScores(games);
+
+    // Fallback: infer penalty winner from the bracket when ESPN data is missing
+    this.inferPenaltyWinnersFromBracket(games);
 
     return games.map((g) => this.mapGameToMatch(g, teamsMap, stadiumsMap));
   }
