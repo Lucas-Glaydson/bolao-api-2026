@@ -116,6 +116,7 @@ export class GenerateKnockoutMatchesUseCase {
           officialHomeScore: null,
           officialAwayScore: null,
           winner: null,
+          penaltyWinner: null,
           syncedAt: new Date(),
         });
         generated++;
@@ -162,6 +163,7 @@ export class GenerateKnockoutMatchesUseCase {
           officialHomeScore: null,
           officialAwayScore: null,
           winner: null,
+          penaltyWinner: null,
           syncedAt: new Date(),
         });
         generated++;

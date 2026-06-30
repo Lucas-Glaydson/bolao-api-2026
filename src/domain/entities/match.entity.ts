@@ -44,6 +44,7 @@ export interface Match {
   manualAwayScore?: number | null;
   useManualScore?: boolean;
   winner: MatchWinner | null;
+  penaltyWinner: MatchWinner | null;
   syncedAt: Date;
   createdAt: Date;
   updatedAt: Date;

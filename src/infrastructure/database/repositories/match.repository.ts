@@ -124,20 +124,17 @@ export class MatchRepository implements IMatchRepository {
       Object.entries(data).filter(([, v]) => v !== undefined),
     );
 
-    // Preserve a confirmed penalty winner: once match.winner is HOME or AWAY
-    // (set by a successful ESPN sync), don't let a later sync downgrade it to
-    // DRAW just because ESPN is temporarily unavailable or returns no winner flag.
-    if (cleanData.winner === MatchWinner.DRAW) {
+    // Once penaltyWinner is set, never clear it with a sync that has no
+    // penalty data (the provider omits penaltyWinner when unknown, so it
+    // will be undefined and already stripped above — but guard against null).
+    if ('penaltyWinner' in cleanData && cleanData.penaltyWinner === null) {
       const existing = await this.matchModel
         .findOne({ externalId })
-        .select('winner')
+        .select('penaltyWinner')
         .lean()
         .exec();
-      if (
-        existing?.winner === MatchWinner.HOME ||
-        existing?.winner === MatchWinner.AWAY
-      ) {
-        delete cleanData.winner;
+      if (existing?.penaltyWinner === 'home' || existing?.penaltyWinner === 'away') {
+        delete cleanData.penaltyWinner;
       }
     }
 
@@ -197,6 +194,7 @@ export class MatchRepository implements IMatchRepository {
       manualAwayScore: doc.manualAwayScore,
       useManualScore: doc.useManualScore,
       winner: doc.winner,
+      penaltyWinner: doc.penaltyWinner ?? null,
       syncedAt: doc.syncedAt,
       createdAt: doc.createdAt || new Date(),
       updatedAt: doc.updatedAt || new Date(),

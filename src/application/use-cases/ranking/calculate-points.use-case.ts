@@ -44,16 +44,10 @@ export class CalculatePointsUseCase {
             match.id,
           );
 
-          // A penalty match is one where the score is a draw but the winner
-          // is HOME or AWAY (decided by penalty shootout). We must always
-          // recalculate predictions for these matches because the penalty
-          // winner may have been synced after the initial calculation.
-          const isPenaltyMatch =
-            match.officialHomeScore !== null &&
-            match.officialAwayScore !== null &&
-            match.officialHomeScore === match.officialAwayScore &&
-            match.winner !== null &&
-            match.winner !== MatchWinner.DRAW;
+          // A penalty match is one that has an explicit penaltyWinner set.
+          // We always recalculate predictions for these matches because the
+          // penalty winner may have been synced after the initial calculation.
+          const isPenaltyMatch = match.penaltyWinner !== null;
 
           for (const prediction of predictions) {
             // Skip if already calculated, unless it's a penalty match
@@ -87,7 +81,7 @@ export class CalculatePointsUseCase {
               scoreRule.basePoints,
               scoreRule.exactScoreBonus,
               prediction.tiebreakWinner,
-              match.winner,
+              match.penaltyWinner,
             );
 
             // Update prediction with points
@@ -128,19 +122,12 @@ export class CalculatePointsUseCase {
     basePoints: number,
     exactBonus: number,
     tiebreakWinner: 'home' | 'away' | null,
-    matchWinner: MatchWinner | null,
+    penaltyWinner: MatchWinner | null,
   ): { points: number; exactScore: boolean; outcomeHit: boolean } {
     // ── Exact score ───────────────────────────────────────────────────────────
     if (predictedHome === actualHome && predictedAway === actualAway) {
-      const isDrawScore = actualHome === actualAway;
-      // Match went to penalties: score is draw but match.winner is HOME or AWAY
-      const hasPenaltyWinner =
-        isDrawScore &&
-        matchWinner !== null &&
-        matchWinner !== MatchWinner.DRAW;
-
-      // Exact draw + correct penalty winner → +1 tiebreak bonus (3 pts with base=1, bonus=1)
-      if (hasPenaltyWinner && tiebreakWinner === matchWinner) {
+      // Exact draw + correct penalty winner → +1 tiebreak bonus
+      if (penaltyWinner !== null && tiebreakWinner === penaltyWinner) {
         return {
           points: basePoints + exactBonus + 1,
           exactScore: true,
@@ -148,7 +135,7 @@ export class CalculatePointsUseCase {
         };
       }
 
-      // Exact score in every other case (including wrong tiebreak) → 2 pts
+      // Exact score in every other case (including wrong/missing tiebreak) → 2 pts
       return {
         points: basePoints + exactBonus,
         exactScore: true,
@@ -161,17 +148,13 @@ export class CalculatePointsUseCase {
     const actualWinner = this.determineWinner(actualHome, actualAway);
 
     if (predictedWinner === actualWinner) {
-      // Resultado + pênaltis: user predicted draw AND match went to penalties
-      // AND user got the penalty winner right → 2 pts
-      const matchWentToPenalties =
-        matchWinner !== null && matchWinner !== MatchWinner.DRAW;
+      // Predicted draw + match went to penalties + correct penalty winner → 2 pts
       const predictedDraw = predictedHome === predictedAway;
-
-      if (matchWentToPenalties && predictedDraw && tiebreakWinner === matchWinner) {
+      if (penaltyWinner !== null && predictedDraw && tiebreakWinner === penaltyWinner) {
         return { points: basePoints + 1, exactScore: false, outcomeHit: true };
       }
 
-      // Resultado simples → basePoints (1 pt)
+      // Correct outcome only → basePoints (1 pt)
       return { points: basePoints, exactScore: false, outcomeHit: true };
     }
 

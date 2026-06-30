@@ -60,6 +60,9 @@ export class MatchDocument {
   @Prop({ type: String, enum: Object.values(MatchWinner), default: null })
   winner: MatchWinner | null;
 
+  @Prop({ type: String, enum: ['home', 'away'], default: null })
+  penaltyWinner: 'home' | 'away' | null;
+
   @Prop({ type: Date, default: Date.now })
   syncedAt: Date;
 }

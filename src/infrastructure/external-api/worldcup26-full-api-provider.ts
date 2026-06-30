@@ -405,14 +405,17 @@ export class WorldCup26FullApiProvider implements IFootballApiProvider {
       status = kickoffMs < now - 90 * 60_000 ? MatchStatus.LIVE : MatchStatus.SCHEDULED;
     }
 
-    // Winner
+    // Winner (regulation-time result only — DRAW stays DRAW even after penalties)
     let winner: MatchWinner | null = null;
+    let penaltyWinner: MatchWinner | null = null;
     if (finished && officialHomeScore !== null && officialAwayScore !== null) {
       if (officialHomeScore > officialAwayScore) winner = MatchWinner.HOME;
       else if (officialAwayScore > officialHomeScore) winner = MatchWinner.AWAY;
-      else if (g._penaltyWinner === 'home') winner = MatchWinner.HOME;
-      else if (g._penaltyWinner === 'away') winner = MatchWinner.AWAY;
-      else winner = MatchWinner.DRAW;
+      else {
+        winner = MatchWinner.DRAW;
+        if (g._penaltyWinner === 'home') penaltyWinner = MatchWinner.HOME;
+        else if (g._penaltyWinner === 'away') penaltyWinner = MatchWinner.AWAY;
+      }
     }
 
     return {
@@ -431,6 +434,7 @@ export class WorldCup26FullApiProvider implements IFootballApiProvider {
       officialHomeScore,
       officialAwayScore,
       winner,
+      ...(penaltyWinner !== null ? { penaltyWinner } : {}),
       syncedAt:          new Date(),
     };
   }
