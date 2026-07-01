@@ -16,8 +16,13 @@ export class CalculatePointsUseCase {
     private readonly scoreRuleRepository: ScoreRuleRepository,
   ) {}
 
-  async execute(): Promise<{ processed: number; errors: number }> {
-    this.logger.log('Starting points calculation');
+  /**
+   * Calculates points for all finished matches.
+   * @param forceRecalculate When true, recalculates even if pointsAwarded is already set.
+   *   Use this for admin-triggered recalculations or after score corrections.
+   */
+  async execute(forceRecalculate = false): Promise<{ processed: number; errors: number }> {
+    this.logger.log(`Starting points calculation${forceRecalculate ? ' (FORCED)' : ''}`);
 
     try {
       // Get all finished matches
@@ -30,70 +35,9 @@ export class CalculatePointsUseCase {
 
       for (const match of finishedMatches) {
         try {
-          // Get score rule for this stage
-          const scoreRule = await this.scoreRuleRepository.findByStage(
-            match.stage,
-          );
-          if (!scoreRule || !scoreRule.active) {
-            this.logger.warn(`No active score rule for stage ${match.stage}`);
-            continue;
-          }
-
-          // Get all predictions for this match
-          const predictions = await this.predictionRepository.findByMatch(
-            match.id,
-          );
-
-          // A penalty match is one that has an explicit penaltyWinner set.
-          // We always recalculate predictions for these matches because the
-          // penalty winner may have been synced after the initial calculation.
-          const isPenaltyMatch = match.penaltyWinner !== null;
-
-          for (const prediction of predictions) {
-            // Skip if already calculated, unless it's a penalty match
-            // (penalty winner may have been set after the first run)
-            if (prediction.pointsAwarded !== null && !isPenaltyMatch) {
-              continue;
-            }
-
-            // Skip if match has no official scores
-            if (match.officialHomeScore === null || match.officialAwayScore === null) {
-              continue;
-            }
-
-            // Auto-filled predictions always receive 0 pts
-            if (prediction.isAutoFilled) {
-              await this.predictionRepository.update(prediction.id, {
-                pointsAwarded: 0,
-                exactScoreHit: false,
-                outcomeHit: false,
-              });
-              processed++;
-              continue;
-            }
-
-            // Calculate points
-            const result = this.calculatePredictionPoints(
-              prediction.predictedHomeScore,
-              prediction.predictedAwayScore,
-              match.officialHomeScore,
-              match.officialAwayScore,
-              scoreRule.basePoints,
-              scoreRule.exactScoreBonus,
-              prediction.tiebreakWinner,
-              match.penaltyWinner,
-            );
-
-            // Update prediction with points
-            await this.predictionRepository.update(prediction.id, {
-              pointsAwarded: result.points,
-              exactScoreHit: result.exactScore,
-              outcomeHit: result.outcomeHit,
-              lockedAt: new Date(),
-            });
-
-            processed++;
-          }
+          const result = await this._calculateForMatch(match, forceRecalculate);
+          processed += result.processed;
+          errors += result.errors;
         } catch (error) {
           this.logger.error(
             `Error processing match ${match.id}`,
@@ -112,6 +56,111 @@ export class CalculatePointsUseCase {
       this.logger.error('Error in points calculation', error.message);
       throw error;
     }
+  }
+
+  /**
+   * Recalculates points for a single match. Always forces recalculation
+   * (ignores existing pointsAwarded). Used after manual score updates.
+   */
+  async executeForMatch(matchId: string): Promise<{ processed: number; errors: number }> {
+    const match = await this.matchRepository.findById(matchId);
+    if (!match) {
+      this.logger.warn(`executeForMatch: match ${matchId} not found`);
+      return { processed: 0, errors: 0 };
+    }
+    if (match.officialHomeScore === null || match.officialAwayScore === null) {
+      this.logger.warn(`executeForMatch: match ${matchId} has no official scores`);
+      return { processed: 0, errors: 0 };
+    }
+    return this._calculateForMatch(match, true);
+  }
+
+  private async _calculateForMatch(
+    match: import('../../../domain/entities').Match,
+    forceRecalculate: boolean,
+  ): Promise<{ processed: number; errors: number }> {
+    let processed = 0;
+    let errors = 0;
+
+    try {
+      // Get score rule for this stage
+      const scoreRule = await this.scoreRuleRepository.findByStage(
+        match.stage,
+      );
+      if (!scoreRule || !scoreRule.active) {
+        this.logger.warn(`No active score rule for stage ${match.stage}`);
+        return { processed, errors };
+      }
+
+      // Get all predictions for this match
+      const predictions = await this.predictionRepository.findByMatch(
+        match.id,
+      );
+
+      // A penalty match is one that has an explicit penaltyWinner set.
+      const isPenaltyMatch = match.penaltyWinner !== null;
+
+      for (const prediction of predictions) {
+        // Skip if already calculated, unless:
+        //  - forcing recalculation (admin action / score correction), OR
+        //  - it's a penalty match (penalty winner may have arrived later)
+        if (prediction.pointsAwarded !== null && !isPenaltyMatch && !forceRecalculate) {
+          continue;
+        }
+
+        // Skip if match has no official scores
+        if (match.officialHomeScore === null || match.officialAwayScore === null) {
+          continue;
+        }
+
+        // Auto-filled predictions always receive 0 pts
+        if (prediction.isAutoFilled) {
+          await this.predictionRepository.update(prediction.id, {
+            pointsAwarded: 0,
+            exactScoreHit: false,
+            outcomeHit: false,
+          });
+          processed++;
+          continue;
+        }
+
+        // Calculate points
+        const result = this.calculatePredictionPoints(
+          prediction.predictedHomeScore,
+          prediction.predictedAwayScore,
+          match.officialHomeScore,
+          match.officialAwayScore,
+          scoreRule.basePoints,
+          scoreRule.exactScoreBonus,
+          prediction.tiebreakWinner,
+          match.penaltyWinner,
+        );
+
+        this.logger.debug(
+          `Match ${match.homeTeam} ${match.officialHomeScore}-${match.officialAwayScore} ${match.awayTeam}` +
+          ` | predicted ${prediction.predictedHomeScore}-${prediction.predictedAwayScore}` +
+          ` | points: ${result.points} (exact: ${result.exactScore}, outcome: ${result.outcomeHit})`,
+        );
+
+        // Update prediction with points
+        await this.predictionRepository.update(prediction.id, {
+          pointsAwarded: result.points,
+          exactScoreHit: result.exactScore,
+          outcomeHit: result.outcomeHit,
+          lockedAt: prediction.lockedAt ?? new Date(),
+        });
+
+        processed++;
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error processing match ${match.id}`,
+        error.message,
+      );
+      errors++;
+    }
+
+    return { processed, errors };
   }
 
   private calculatePredictionPoints(
