@@ -62,7 +62,8 @@ export class UpsertPredictionUseCase {
     // Calculate when the prediction can be edited until
     const canEditUntil = oneHourBeforeKickoff;
 
-    // Upsert prediction
+    // Upsert prediction — always clear isAutoFilled so a manual submission
+    // overrides any previously auto-filled placeholder.
     const prediction = await this.predictionRepository.upsertByUserAndMatch(
       userId,
       matchId,
@@ -70,6 +71,7 @@ export class UpsertPredictionUseCase {
         predictedHomeScore,
         predictedAwayScore,
         tiebreakWinner: tiebreakWinner ?? null,
+        isAutoFilled: false,
         canEditUntil,
         lockedAt: null,
         pointsAwarded: null,

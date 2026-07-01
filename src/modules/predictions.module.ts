@@ -6,8 +6,10 @@ import {
   GetPredictionsByMatchUseCase,
   GetAllPredictionsUseCase,
 } from '../application/use-cases/prediction';
+import { RankingModule } from './ranking.module';
 
 @Module({
+  imports: [RankingModule],
   controllers: [PredictionsController],
   providers: [
     UpsertPredictionUseCase,
